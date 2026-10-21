@@ -1,0 +1,13 @@
+setup: 5/5 eff 500
+== note ==
+eff 500 (100bb)
+hero btn r 20 sb r 90 hero c
+185 flop Ad 7d 6s. sb allin 410 hero c
+1005 turn 3s.
+1005 river Qs.
+== state ==
+street: river  board: Qs
+pot: 1005  live: 1005  if-closed: 1005
+in hand: sb:0 (allin), hero=btn:0 (allin)
+to act: -  hand over: false
+errors: none

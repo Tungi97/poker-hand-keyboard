@@ -1,0 +1,12 @@
+setup: 2/5 eff 1000
+== note ==
+eff 1000 (200bb)
+hj r 20 hero co c bb c
+62 flop 8h 7h 2s. bb b 40 hj r 120 hero f bb c
+302 turn Ac. x x
+== state ==
+street: turn  board: Ac
+pot: 302  live: 302  if-closed: 302
+in hand: bb:860, hj:860
+to act: -  hand over: false
+errors: none

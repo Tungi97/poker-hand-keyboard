@@ -1,0 +1,20 @@
+{
+  "name": "poker-hand-keyboard",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5180 --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 5181 --host",
+    "test": "vitest run",
+    "test:update": "UPDATE_GOLDEN=1 vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.0.5"
+  }
+}

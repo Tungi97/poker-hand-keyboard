@@ -1,0 +1,10 @@
+setup: 5/5 eff 500
+== note ==
+eff 500 (100bb)
+hero co r 15 btn f sb f bb f
+== state ==
+street: preflop  board: -
+pot: 0  live: 25  if-closed: 15
+in hand: hero=co:485
+to act: -  hand over: true
+errors: none

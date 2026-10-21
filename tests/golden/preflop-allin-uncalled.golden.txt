@@ -1,0 +1,10 @@
+setup: 2/5 eff 1000
+== note ==
+eff 1000 (200bb)
+hero sb r 20 bb allin 1000 hero f
+== state ==
+street: preflop  board: -
+pot: 0  live: 1020  if-closed: 40
+in hand: bb:0 (allin)
+to act: -  hand over: true
+errors: none

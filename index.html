@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#16171a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Hands" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <title>Poker Hand Keyboard</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="bar">
+        <button class="ghost" id="btn-history" type="button">History <span id="hist-count"></span></button>
+        <div class="status" id="status"></div>
+        <button class="ghost" id="btn-setup" type="button">Setup</button>
+      </header>
+      <textarea id="note" readonly inputmode="none" spellcheck="false" aria-label="Hand note"></textarea>
+      <div class="hint" id="hint"></div>
+      <div class="kb" id="kb"></div>
+    </div>
+
+    <div class="sheet" id="sheet-setup" hidden>
+      <div class="sheet-inner">
+        <h2>Setup</h2>
+        <div class="fields">
+          <label>Small blind<input id="in-sb" type="number" inputmode="numeric" min="0" /></label>
+          <label>Big blind<input id="in-bb" type="number" inputmode="numeric" min="1" /></label>
+          <label>Effective stack<input id="in-eff" type="number" inputmode="numeric" min="1" /></label>
+        </div>
+        <label class="wide">Villain labels <small>comma separated, one word each</small>
+          <input id="in-labels" type="text" autocapitalize="off" autocomplete="off" placeholder="fish, reg, nit" />
+        </label>
+        <p class="muted">New blinds and stack apply from the next new hand.</p>
+        <div class="row">
+          <button class="primary" id="setup-save" type="button">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet" id="sheet-history" hidden>
+      <div class="sheet-inner">
+        <div class="row between">
+          <h2>Session history</h2>
+          <button class="ghost" id="hist-close" type="button">Close</button>
+        </div>
+        <div class="row">
+          <button id="hist-copy-all" type="button">Copy all</button>
+          <button class="danger" id="hist-clear" type="button">Clear history</button>
+        </div>
+        <ol class="hist" id="hist-list"></ol>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
