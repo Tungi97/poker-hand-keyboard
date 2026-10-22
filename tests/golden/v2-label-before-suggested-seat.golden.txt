@@ -1,0 +1,12 @@
+setup: 5/5 eff 500
+== note ==
+eff 500 (100bb)
+hero btn r 20 fish sb r 90 hero c
+185 flop Jc Tc 2h. fish b 60 c
+305 turn
+== state ==
+street: turn  board: -
+pot: 305  live: 305  if-closed: 305
+in hand: fish=sb:350, hero=btn:350
+to act: sb  hand over: false
+errors: none

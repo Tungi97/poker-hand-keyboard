@@ -1,0 +1,11 @@
+setup: 5/5 eff 500
+== note ==
+eff 600 (120bb)
+hero btn r 20 sb allin 450 hero c
+905 flop
+== state ==
+street: flop  board: -
+pot: 905  live: 905  if-closed: 905
+in hand: sb:150 (allin), hero=btn:150
+to act: -  hand over: false
+errors: none

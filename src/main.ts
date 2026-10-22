@@ -1,7 +1,7 @@
 import './style.css';
 import { registerSW } from 'virtual:pwa-register';
 import { POSITIONS, RANKS, SUITS, activePlayers, parseHand, sanitizeLabel, type HandState, type Setup } from './engine';
-import { applyKey, newHandText, type EditorState, type Key } from './editor';
+import { applyKey, exportText, initialState, newHandText, type EditorState, type Key } from './editor';
 
 registerSW({ immediate: true });
 
@@ -33,18 +33,43 @@ function save(key: string, value: unknown) {
 
 let setup: Setup = { ...DEFAULT_SETUP, ...load<Partial<Setup>>(LS.setup, {}) };
 let history: SavedHand[] = load<SavedHand[]>(LS.history, []);
-let ed: EditorState = { text: load<string>(LS.current, '') || newHandText(setup), pendingRank: null };
+let ed: EditorState = initialState(load<string>(LS.current, '') || newHandText(setup));
 let state: HandState = parseHand(ed.text, setup);
 
 // ---------- dom ----------
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-const note = $<HTMLTextAreaElement>('note');
+const note = $('note');
 const kb = $('kb');
 const statusEl = $('status');
 const hint = $('hint');
 const toastEl = $('toast');
 
 const SUIT_GLYPH: Record<string, string> = { s: '♠', h: '♥', d: '♦', c: '♣' };
+
+// ---------- note rendering (4-color cards) ----------
+const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+const cardSpan = (c: string) => `<span class="card s-${c[1]}">${c}</span>`;
+
+function wordHtml(w: string): string {
+  const m = w.match(/^((?:[2-9TJQKA][shdc])+)(\.?)$/);
+  return m ? m[1].match(/../g)!.map(cardSpan).join('') + esc(m[2]) : esc(w);
+}
+
+function noteHtml(text: string, st?: EditorState): string {
+  const lines = text.split('\n');
+  const html = lines.map((line, li) => {
+    if (li === 0 && /^eff \d+/.test(line)) {
+      const [, v, rest] = line.match(/^eff (\d+)(.*)$/)!;
+      const editing = st?.effEdit ? ' editing' : '';
+      return `eff <span class="eff${editing}" data-eff>${v}</span>${esc(rest)}`;
+    }
+    return line.split(/(\s+)/).map((w) => (/\s/.test(w) || !w ? w : wordHtml(w))).join('');
+  });
+  let out = html.join('\n');
+  if (st?.autoActor) out = out.replace(/(\S+)$/, '<span class="auto">$1</span>');
+  if (st?.pendingRank) out += `${/\s$/.test(text) ? '' : ' '}<span class="pending">${st.pendingRank}</span>`;
+  return out;
+}
 
 type KeyDef = { k: string; label: string; cls?: string };
 const row = (...keys: KeyDef[]) => keys;
@@ -53,7 +78,12 @@ function layout(): KeyDef[][] {
   const labels = setup.labels.slice(0, 6);
   return [
     POSITIONS.map((p) => ({ k: `w:${p}`, label: p, cls: 'pos' })),
-    row({ k: 'w:hero', label: 'hero', cls: 'label' }, ...labels.map((l) => ({ k: `w:${l}`, label: l, cls: 'label' }))),
+    row(
+      { k: 'w:hero', label: 'hero', cls: 'label' },
+      ...labels.map((l) => ({ k: `w:${l}`, label: l, cls: 'label' })),
+      { k: 'w:shows', label: 'shows', cls: 'sd' },
+      { k: 'w:mucks', label: 'mucks', cls: 'sd' },
+    ),
     row(
       ...['r', 'b', 'c', 'x', 'f'].map((a) => ({ k: `w:${a}`, label: a, cls: 'act' })),
       { k: 'allin', label: 'allin', cls: 'act w2' },
@@ -62,7 +92,7 @@ function layout(): KeyDef[][] {
     RANKS.slice(0, 7).map((r) => ({ k: `r:${r}`, label: r, cls: 'rank' })),
     row(
       ...RANKS.slice(7).map((r) => ({ k: `r:${r}`, label: r, cls: 'rank' })),
-      ...SUITS.map((s) => ({ k: `s:${s}`, label: SUIT_GLYPH[s], cls: `suit${s === 'h' || s === 'd' ? ' red' : ''}` })),
+      ...SUITS.map((s) => ({ k: `s:${s}`, label: SUIT_GLYPH[s], cls: `suit s-${s}` })),
     ),
     '1234567890'.split('').map((d) => ({ k: `d:${d}`, label: d, cls: 'num' })),
     row(
@@ -101,16 +131,20 @@ function render() {
   state = parseHand(ed.text, setup);
   save(LS.current, ed.text);
 
-  note.value = ed.pendingRank ? ed.text + (/\s$/.test(ed.text) ? '' : ' ') + ed.pendingRank : ed.text;
+  note.innerHTML = noteHtml(ed.text, ed) + '<span class="caret"></span>';
   note.scrollTop = note.scrollHeight;
 
   const inHand = activePlayers(state);
   const who = inHand.length <= 4 ? inHand.map((p) => (p.label ? `${p.label} ${p.seat}` : p.seat)).join(' · ') : `${inHand.length} players`;
-  statusEl.innerHTML = `${state.street} &nbsp;pot <b>${state.handOver ? state.potIfClosed : state.live}</b> &nbsp;<span>${who}</span>`;
+  statusEl.innerHTML = `${state.street} &nbsp;pot <b>${state.phase === 'betting' ? state.live : state.potIfClosed}</b> &nbsp;<span>${who}</span>`;
 
   const lastErr = state.errors[state.errors.length - 1];
   hint.classList.toggle('err', !!lastErr);
   if (lastErr) hint.textContent = `⚠ ${lastErr}`;
+  else if (ed.effEdit) hint.textContent = 'type the new effective stack';
+  else if (state.showCardsNeeded > 0) hint.textContent = `enter ${state.showCardsNeeded} hole card${state.showCardsNeeded > 1 ? 's' : ''}`;
+  else if (state.phase === 'showdown')
+    hint.textContent = state.showdownQueue.length ? `showdown: ${state.pendingActor ?? state.showdownQueue[0]} shows or mucks` : 'showdown done · copy or start a new hand';
   else if (state.street !== 'preflop' && state.boardNeeded > 0)
     hint.textContent = `${state.street}: ${state.boardNeeded} card${state.boardNeeded > 1 ? 's' : ''} to enter`;
   else if (state.handOver) hint.textContent = 'hand over · copy or start a new hand';
@@ -131,9 +165,14 @@ function render() {
     el.classList.toggle('sel', ed.pendingRank === r);
   }
   for (const s of SUITS) {
-    keyEls.get(`s:${s}`)!.disabled = !ed.pendingRank || state.usedCards.has(ed.pendingRank + s);
+    const el = keyEls.get(`s:${s}`)!;
+    const used = !!ed.pendingRank && state.usedCards.has(ed.pendingRank + s);
+    el.disabled = !ed.pendingRank || used;
+    el.classList.toggle('used', used);
   }
-  keyEls.get('next')!.disabled = state.street === 'river' || state.handOver;
+  keyEls.get('next')!.disabled =
+    state.street === 'river' || state.phase !== 'betting' || (state.street !== 'preflop' && state.boardNeeded > 0);
+  for (const k of ['w:shows', 'w:mucks']) keyEls.get(k)!.disabled = state.phase === 'betting';
   $('hist-count').textContent = history.length ? String(history.length) : '';
 }
 
@@ -146,28 +185,52 @@ function toast(msg: string) {
   toastTimer = window.setTimeout(() => toastEl.classList.remove('show'), 1300);
 }
 
-async function copyText(text: string, what = 'Copied') {
+// Hidden-textarea copy: works on iOS Safari and plain http where navigator.clipboard is missing.
+function legacyCopy(text: string): boolean {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', ''); // no iOS keyboard
+  Object.assign(ta.style, { position: 'fixed', top: '0', left: '0', opacity: '0', fontSize: '16px', pointerEvents: 'none' });
+  document.body.appendChild(ta);
+  ta.focus({ preventScroll: true });
+  ta.select();
+  ta.setSelectionRange(0, text.length); // iOS ignores select()
+  let ok = false;
   try {
-    await navigator.clipboard.writeText(text);
+    ok = document.execCommand('copy');
   } catch {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.setAttribute('readonly', '');
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    ta.remove();
+    ok = false;
   }
-  toast(what);
+  ta.remove();
+  return ok;
 }
 
-const handBody = (text: string) => text.trim();
-const hasContent = (text: string) => handBody(text).split('\n').length > 1;
+/** Must run inside a click handler: iOS only allows clipboard writes during a user activation. */
+async function copyText(text: string, what = 'Copied') {
+  let ok = false;
+  if (navigator.clipboard?.writeText && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    } catch {
+      ok = legacyCopy(text);
+    }
+  } else {
+    ok = legacyCopy(text);
+  }
+  if (ok) return toast(what);
+  // Last resort: select the note so the iOS "Copy" menu is one tap away.
+  const range = document.createRange();
+  range.selectNodeContents(note);
+  getSelection()?.removeAllRanges();
+  getSelection()?.addRange(range);
+  toast('Copy blocked: text selected, tap Copy');
+}
+
+const hasContent = (text: string) => text.trim().split('\n').length > 1;
 
 function archiveCurrent() {
-  const text = handBody(ed.text);
+  const text = exportText(ed);
   if (!hasContent(text)) return;
   if (history[0]?.text === text) return;
   history.unshift({ id: Date.now(), at: Date.now(), text });
@@ -186,22 +249,28 @@ function onKey(k: string) {
     case 'space': key = { t: 'space' }; break;
     case 'back': key = { t: 'back' }; break;
     case 'next': key = { t: 'next' }; break;
+    case 'eff': key = { t: 'eff' }; break;
     case 'clear':
       if (hasContent(ed.text) && !confirm('Clear this hand?')) return;
       key = { t: 'clear' };
       break;
     case 'copy':
-      void copyText(handBody(ed.text));
+      void copyText(exportText(ed));
       return;
     case 'new':
       archiveCurrent();
-      ed = { text: newHandText(setup), pendingRank: null };
+      ed = initialState(newHandText(setup));
       render();
       toast('New hand');
       return;
   }
   if (key) {
     ed = applyKey(ed, key, setup);
+    // The eff typed on the note becomes the default for the next hand too.
+    if (ed.effEdit === 'typing') {
+      const eff = Number(ed.text.match(/^eff (\d+)/)?.[1]);
+      if (eff > 0 && eff !== setup.eff) save(LS.setup, (setup = { ...setup, eff }));
+    }
     render();
   }
 }
@@ -210,7 +279,7 @@ function onKey(k: string) {
 let repeat = 0;
 kb.addEventListener('pointerdown', (e) => {
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button.k');
-  if (!b || b.disabled) return;
+  if (!b || b.disabled || b.dataset.k === 'copy') return;
   e.preventDefault();
   const k = b.dataset.k!;
   b.classList.add('down');
@@ -228,6 +297,17 @@ const release = () => {
 };
 ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => kb.addEventListener(ev, release));
 kb.addEventListener('contextmenu', (e) => e.preventDefault());
+// Copy fires on click, not pointerdown: a touch pointerdown is not a user activation, so iOS blocks the clipboard.
+kb.addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button.k');
+  if (b?.dataset.k === 'copy') onKey('copy');
+});
+// Tap the eff value to overwrite it.
+note.addEventListener('pointerdown', (e) => {
+  if (!(e.target as HTMLElement).closest('[data-eff]')) return;
+  e.preventDefault();
+  onKey('eff');
+});
 
 // Desktop convenience: Backspace on a physical keyboard.
 window.addEventListener('keydown', (e) => {
@@ -244,6 +324,10 @@ const inSb = $<HTMLInputElement>('in-sb');
 const inBb = $<HTMLInputElement>('in-bb');
 const inEff = $<HTMLInputElement>('in-eff');
 const inLabels = $<HTMLInputElement>('in-labels');
+// Select the old value on focus so the first digit replaces it.
+for (const el of [inSb, inBb, inEff]) {
+  el.addEventListener('focus', () => setTimeout(() => el.setSelectionRange(0, el.value.length), 0));
+}
 
 $('btn-setup').addEventListener('click', () => {
   inSb.value = String(setup.sb);
@@ -262,7 +346,7 @@ $('setup-save').addEventListener('click', () => {
   setup = { sb: num(inSb, setup.sb, 0), bb: num(inBb, setup.bb, 1), eff: num(inEff, setup.eff, 1), labels };
   save(LS.setup, setup);
   // A fresh hand picks up the new eff line immediately.
-  if (effChanged && !hasContent(ed.text)) ed = { text: newHandText(setup), pendingRank: null };
+  if (effChanged && !hasContent(ed.text)) ed = initialState(newHandText(setup));
   sheetSetup.hidden = true;
   buildKeyboard();
   render();
@@ -284,7 +368,7 @@ function renderHistory() {
   history.forEach((h, i) => {
     const li = document.createElement('li');
     const pre = document.createElement('pre');
-    pre.textContent = h.text;
+    pre.innerHTML = noteHtml(h.text);
     const meta = document.createElement('div');
     meta.className = 'meta';
     const when = document.createElement('span');

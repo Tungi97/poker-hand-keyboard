@@ -1,0 +1,15 @@
+setup: 5/5 eff 500
+== note ==
+eff 500 (100bb)
+hero btn r 20 sb r 90 hero c
+185 flop Ad 7d 6s. x b 60 c
+305 turn 3s. x x
+305 river Qs. b 200 c
+sb shows AhKs
+hero mucks
+== state ==
+street: river  board: Qs
+pot: 305  live: 705  if-closed: 705
+in hand: sb:150, hero=btn:150
+to act: -  hand over: false
+errors: none

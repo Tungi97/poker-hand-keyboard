@@ -3,9 +3,10 @@ setup: 2/5 eff 1000
 eff 1000 (200bb)
 sb c bb x
 10 flop 5c 5d 9h. b 10 c
+30 turn
 == state ==
-street: flop  board: 5c 5d 9h
-pot: 10  live: 30  if-closed: 30
+street: turn  board: -
+pot: 30  live: 30  if-closed: 30
 in hand: sb:985, bb:985
-to act: -  hand over: false
+to act: sb  hand over: false
 errors: none

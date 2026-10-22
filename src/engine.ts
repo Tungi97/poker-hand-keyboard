@@ -15,8 +15,11 @@ export const ACTIONS = ['r', 'b', 'c', 'x', 'f', 'allin'] as const;
 export const RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as const;
 export const SUITS = ['s', 'h', 'd', 'c'] as const;
 
-const RESERVED = new Set<string>([...POSITIONS, ...ACTIONS, 'hero', 'eff', 'flop', 'turn', 'river']);
+const RESERVED = new Set<string>([...POSITIONS, ...ACTIONS, 'hero', 'eff', 'flop', 'turn', 'river', 'shows', 'mucks']);
 const CARD_RE = /^[2-9TJQKA][shdc]$/;
+const CARDS_RE = /^(?:[2-9TJQKA][shdc])+$/; // e.g. AhKs in a showdown line
+const splitCards = (t: string) => t.match(/[2-9TJQKA][shdc]/g) ?? [];
+export const HOLE_CARDS = 2;
 const NUM_RE = /^\d+$/;
 
 export interface Setup {
@@ -61,12 +64,21 @@ export interface HandState {
   toAct: Seat | null;
   /** A seat named explicitly that hasn't acted yet (e.g. trailing `sb`). */
   pendingActor: Seat | null;
+  /** Trailing hero/label waiting for its position (e.g. `fish` before `sb`). */
+  pendingBind: string | null;
   board: string[];
   boardNeeded: number;
   usedCards: Set<string>;
   handOver: boolean;
   /** Label rewrites for players who folded preflop (positions only, no names). */
   foldedLabelEdits: LabelEdit[];
+  /** betting, showdown (river closed with 2+ players, or any shows/mucks), or over (everyone else folded). */
+  phase: 'betting' | 'showdown' | 'over';
+  /** Players still to show or muck, in showdown order (last aggressor first). */
+  showdownQueue: Seat[];
+  /** Hole cards still to enter on the trailing `X shows` line. */
+  showCardsNeeded: number;
+  shown: Partial<Record<Seat, string[] | 'muck'>>;
   errors: string[];
 }
 
@@ -126,6 +138,10 @@ export function parseHand(text: string, setup: Setup): HandState {
   const usedCards = new Set<string>();
   const labelSeat = new Map<string, Seat>();
   const labelTokens: { tok: Token; seat: Seat; replace: string }[] = [];
+  const shown: Partial<Record<Seat, string[] | 'muck'>> = {};
+  let showing: Seat | null = null; // seat whose `shows` line is collecting cards
+  let lastAggressor: Seat | null = null;
+  let aggressedThisStreet = false;
 
   const put = (p: Player, amount: number) => {
     const a = Math.max(0, Math.min(amount, p.stack));
@@ -224,6 +240,8 @@ export function parseHand(text: string, setup: Setup): HandState {
     p.acted = true;
     if (p.streetBet > prevMax) {
       maxBet = p.streetBet;
+      lastAggressor = p.seat;
+      aggressedThisStreet = true;
       for (const s of POSITIONS) if (s !== p.seat) players[s].acted = false;
     }
     pointer = (order.indexOf(p.seat) + 1) % order.length;
@@ -252,18 +270,36 @@ export function parseHand(text: string, setup: Setup): HandState {
       order = POSTFLOP_ORDER;
       pointer = 0;
       board = [];
+      aggressedThisStreet = false;
       pendingActor = null;
       pendingBind = null;
       continue;
     }
 
-    if (CARD_RE.test(w)) {
-      if (usedCards.has(w)) err(t, 'card already used');
-      usedCards.add(w);
-      if (street !== 'preflop' && board.length < BOARD_SIZE[street]) {
-        board.push(w);
-        allBoard.push(w);
+    if (CARDS_RE.test(w)) {
+      for (const card of splitCards(w)) {
+        if (usedCards.has(card)) err(t, `${card} already used`);
+        usedCards.add(card);
+        const hand = showing ? shown[showing] : undefined;
+        if (showing && Array.isArray(hand) && hand.length < HOLE_CARDS) hand.push(card);
+        else if (!showing && street !== 'preflop' && board.length < BOARD_SIZE[street]) {
+          board.push(card);
+          allBoard.push(card);
+        }
       }
+      continue;
+    }
+
+    if (w === 'shows' || w === 'mucks') {
+      const seat = pendingActor;
+      pendingActor = null;
+      if (!seat) {
+        err(t, 'who? tap a position first');
+        continue;
+      }
+      if (shown[seat]) err(t, `${seat} already ${shown[seat] === 'muck' ? 'mucked' : 'showed'}`);
+      shown[seat] = w === 'shows' ? [] : 'muck';
+      showing = w === 'shows' ? seat : null;
       continue;
     }
 
@@ -278,6 +314,7 @@ export function parseHand(text: string, setup: Setup): HandState {
         pendingBind = null;
       }
       pendingActor = seat;
+      showing = null;
       continue;
     }
 
@@ -285,6 +322,7 @@ export function parseHand(text: string, setup: Setup): HandState {
       const seat = labelSeat.get(w);
       if (seat) {
         pendingActor = seat;
+        showing = null;
         if (w !== 'hero' && street === 'preflop') labelTokens.push({ tok: t, seat, replace: seat });
       } else {
         pendingBind = w;
@@ -322,7 +360,9 @@ export function parseHand(text: string, setup: Setup): HandState {
           break;
         }
         case 'allin':
-          put(p, p.stack);
+          // A typed amount overrides the fill-in (e.g. villain shorter than eff); either way they're all-in.
+          put(p, amountTok ? Number(amountTok.text) - p.streetBet : p.stack);
+          p.allIn = true;
           break;
       }
       finishAction(p, prevMax);
@@ -340,6 +380,20 @@ export function parseHand(text: string, setup: Setup): HandState {
   let live = pot;
   for (const s of POSITIONS) live += players[s].streetBet;
 
+  const inHand = POSTFLOP_ORDER.filter((seat) => players[seat].inHand);
+  // A name written on the showdown line doesn't reopen the betting.
+  const riverClosed = street === 'river' && board.length === BOARD_SIZE.river && !nextToAct();
+  const anyShown = Object.keys(shown).length > 0;
+  const phase = anyShown || (riverClosed && inHand.length >= 2) ? 'showdown' : inHand.length <= 1 ? 'over' : 'betting';
+  // Last aggressor shows first, unless the river was checked through with players able to bet.
+  const riverCheckedThrough = street === 'river' && !aggressedThisStreet;
+  const agg = lastAggressor as Seat | null; // assigned inside closures, so TS narrows it to null
+  const first = agg && players[agg].inHand && (!riverCheckedThrough || canBetCount() < 2) ? agg : null;
+  const showdownQueue =
+    phase === 'showdown' && inHand.length >= 2 ? [...(first ? [first] : []), ...inHand.filter((s) => s !== first)].filter((s) => !shown[s]) : [];
+  const trailing = showing ? shown[showing] : undefined;
+  const showCardsNeeded = Array.isArray(trailing) ? HOLE_CARDS - trailing.length : 0;
+
   const foldedLabelEdits = labelTokens
     .filter(({ seat }) => players[seat].foldedOn === 'preflop')
     .map(({ tok, replace }) => ({ line: tok.line, word: tok.word, replace }));
@@ -353,11 +407,16 @@ export function parseHand(text: string, setup: Setup): HandState {
     players,
     toAct,
     pendingActor,
+    pendingBind,
     board,
     boardNeeded: BOARD_SIZE[street] - board.length,
     usedCards,
     handOver: inHandCount() <= 1,
     foldedLabelEdits,
+    phase,
+    showdownQueue,
+    showCardsNeeded,
+    shown,
     errors,
   };
 }

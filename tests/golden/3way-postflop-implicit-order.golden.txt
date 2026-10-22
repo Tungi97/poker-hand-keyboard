@@ -2,10 +2,11 @@ setup: 2/5 eff 1000
 == note ==
 eff 1000 (200bb)
 co r 15 hero btn c bb c
-47 flop Jh Jd 4c. x b 30 hero c bb f
+47 flop Jh Jd 4c. bb x co b 30 hero c bb f
+107 turn
 == state ==
-street: flop  board: Jh Jd 4c
-pot: 47  live: 107  if-closed: 107
+street: turn  board: -
+pot: 107  live: 107  if-closed: 107
 in hand: co:955, hero=btn:955
-to act: -  hand over: false
+to act: co  hand over: false
 errors: none

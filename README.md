@@ -17,7 +17,7 @@ npm install
 npm run dev        # http://localhost:5180 (also on your LAN IP, so you can open it on your phone)
 npm test           # golden tests for the parser + pot math
 npm run build      # type-check + production build into dist/
-npm run preview    # serve the production build (with service worker) on :5181
+npm run preview    # serve the production build (with service worker) on :5181 (also on your LAN IP)
 ```
 
 ## How it works
@@ -26,7 +26,14 @@ npm run preview    # serve the production build (with service worker) on :5181
   - Players you skip over are treated as folding (if they face a bet) or checking.
   - Postflop you can omit names (`x b 60 c`); actions go to whoever is next in order.
 - **Amounts:** `r`/`b` N is the **total** bet on that street, including blinds already posted. Dead blinds stay in the pot, and uncalled bets are returned.
-- **next street:** works out the pot and starts a line like `185 flop`. Then enter 3 board cards (1 on the turn and river); a `.` is added after the last one.
+- **Auto-advance:** after each action, the next player still to act is filled in (shown faded in gold). Tap a different seat to replace it; skipped players fold, or check if not facing a bet. Tapping a not-yet-placed label (e.g. `fish`) puts it in front of the suggested seat.
+  - Names are written preflop and in multiway pots; heads-up postflop stays `x b 60 c`.
+  - When the action closes, the next street line (`185 flop`) is written automatically. All-in runouts step through the streets on their own.
+- **Showdown:** when the river closes with 2+ players, the last aggressor is asked first: tap **shows** + 2 cards (`bb shows AhKs`) or **mucks**, one line per player. After everyone else folds, you can still tap a seat + **shows** for a voluntary show.
+- **Effective stack:** on a fresh hand the first digit overwrites the eff value (`eff 800 (160bb)`); tap the gold eff number any time to retype it. A typed `allin` amount also replaces the fill-in (use it when a villain is shorter than eff). Setup fields select their value on focus, so typing replaces it.
+- **4-color deck:** ♠ white, ♥ red, ♦ blue, ♣ green on the suit keys and in the note.
+- **Copy** runs on tap (iOS only allows clipboard access from a click), uses `navigator.clipboard` and falls back to a hidden textarea + `execCommand('copy')` on iOS / plain http. If both are blocked it selects the note so the iOS Copy menu is one tap away.
+- **next street:** manual override: works out the pot and starts a line like `185 flop`. Then enter 3 board cards (1 on the turn and river); a `.` is added after the last one.
 - **Cards:** tap a rank, then a suit. Cards already used are greyed out.
 - **allin:** fills in the player's remaining stack as their total bet, e.g. `allin 410`.
 - **Labels:** villain labels (Setup) bind to a seat with `fish sb`. After that, `fish` alone works as the actor.

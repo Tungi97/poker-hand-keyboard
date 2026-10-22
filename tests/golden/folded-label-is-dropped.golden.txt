@@ -3,9 +3,10 @@ setup: 5/5 eff 500
 eff 500 (100bb)
 utg c reg hj r 30 hero btn c utg f
 75 flop Ts 9s 2c. reg b 40 hero c
+155 turn
 == state ==
-street: flop  board: Ts 9s 2c
-pot: 75  live: 155  if-closed: 155
+street: turn  board: -
+pot: 155  live: 155  if-closed: 155
 in hand: reg=hj:430, hero=btn:430
-to act: -  hand over: false
+to act: hj  hand over: false
 errors: none

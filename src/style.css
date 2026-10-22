@@ -10,7 +10,11 @@
   --gold: #c2a878;
   --gold-dim: rgba(194, 168, 120, 0.16);
   --silver: #b9bcc2;
-  --red-suit: #d39a93;
+  /* 4-color deck: vivid suits on the charcoal theme (spades white for dark mode) */
+  --suit-s: #f5f2eb;
+  --suit-h: #ff3b4e;
+  --suit-d: #2f8bff;
+  --suit-c: #1fc46b;
   --warn: #d7a86e;
   --danger: #c97c76;
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
@@ -78,12 +82,35 @@ button { font: inherit; color: inherit; }
   border-radius: 12px;
   color: var(--text);
   font: 16px/1.55 var(--mono);
-  resize: none;
-  outline: none;
-  caret-color: transparent;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-y: auto;
   -webkit-user-select: text;
   user-select: text;
 }
+.card { font-weight: 700; }
+.s-s { color: var(--suit-s); }
+.s-h { color: var(--suit-h); }
+.s-d { color: var(--suit-d); }
+.s-c { color: var(--suit-c); }
+.eff {
+  color: var(--gold);
+  border-bottom: 1px dashed rgba(194, 168, 120, 0.55);
+  cursor: pointer;
+}
+.eff.editing { background: var(--gold-dim); border-bottom-style: solid; border-radius: 3px 3px 0 0; }
+.auto { color: var(--gold); opacity: 0.6; font-style: italic; }
+.pending { color: var(--gold); text-decoration: underline; }
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 1px;
+  vertical-align: -0.2em;
+  background: var(--gold);
+  animation: blink 1.1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
 
 .hint {
   min-height: 20px;
@@ -129,8 +156,15 @@ button { font: inherit; color: inherit; }
 .k.act { font-family: var(--mono); font-size: 17px; }
 .k.rank { font-family: var(--mono); font-size: 16px; }
 .k.rank.sel { background: var(--gold-dim); box-shadow: inset 0 0 0 1.5px var(--gold); }
-.k.suit { font-size: 20px; color: var(--silver); }
-.k.suit.red { color: var(--red-suit); }
+.k.suit { font-size: 24px; line-height: 1; }
+.k.suit.s-s { color: var(--suit-s); }
+.k.suit.s-h { color: var(--suit-h); }
+.k.suit.s-d { color: var(--suit-d); }
+.k.suit.s-c { color: var(--suit-c); }
+/* Waiting for a rank: stay vivid; only cards already used fade out. */
+.k.suit:disabled { opacity: 0.8; }
+.k.suit.used { opacity: 0.15; }
+.k.sd { font-size: 13px; color: var(--silver); background: var(--key-alt); box-shadow: inset 0 0 0 1px var(--line); }
 .k.num { font-family: var(--mono); font-size: 18px; }
 .k.ctl { font-size: 13px; color: var(--silver); background: var(--key-alt); }
 .k.gold { color: var(--bg); background: var(--gold); font-weight: 600; }

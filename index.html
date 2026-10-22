@@ -19,7 +19,7 @@
         <div class="status" id="status"></div>
         <button class="ghost" id="btn-setup" type="button">Setup</button>
       </header>
-      <textarea id="note" readonly inputmode="none" spellcheck="false" aria-label="Hand note"></textarea>
+      <div id="note" class="note" role="textbox" aria-readonly="true" aria-label="Hand note"></div>
       <div class="hint" id="hint"></div>
       <div class="kb" id="kb"></div>
     </div>
@@ -28,9 +28,9 @@
       <div class="sheet-inner">
         <h2>Setup</h2>
         <div class="fields">
-          <label>Small blind<input id="in-sb" type="number" inputmode="numeric" min="0" /></label>
-          <label>Big blind<input id="in-bb" type="number" inputmode="numeric" min="1" /></label>
-          <label>Effective stack<input id="in-eff" type="number" inputmode="numeric" min="1" /></label>
+          <label>Small blind<input id="in-sb" type="text" inputmode="numeric" pattern="[0-9]*" min="0" /></label>
+          <label>Big blind<input id="in-bb" type="text" inputmode="numeric" pattern="[0-9]*" min="1" /></label>
+          <label>Effective stack<input id="in-eff" type="text" inputmode="numeric" pattern="[0-9]*" min="1" /></label>
         </div>
         <label class="wide">Villain labels <small>comma separated, one word each</small>
           <input id="in-labels" type="text" autocapitalize="off" autocomplete="off" placeholder="fish, reg, nit" />
