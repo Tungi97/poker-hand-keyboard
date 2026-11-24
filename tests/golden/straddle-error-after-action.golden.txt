@@ -1,0 +1,10 @@
+setup: 5/5 eff 500
+== note ==
+eff 500 (100bb)
+utg c utg1 str 20
+== state ==
+street: preflop  board: -
+pot: 0  live: 15  if-closed: 15
+in hand: sb:495, bb:495, utg:495, utg1:500, mp:500, lj:500, hj:500, co:500, btn:500
+to act: utg1  hand over: false
+errors: "str": straddles come before any preflop action

@@ -171,6 +171,7 @@ button { font: inherit; color: inherit; }
 .k.gold:active { background: #d3bb8e; }
 .k.gold:disabled { background: var(--key-alt); color: var(--muted); opacity: 0.5; }
 .k.w2 { flex-grow: 1.6; }
+.k.str { font-size: 15px; color: var(--gold); }
 
 /* Sheets */
 .sheet {
@@ -251,4 +252,55 @@ input:focus { outline: none; border-color: var(--gold); }
 @media (max-height: 700px) {
   .k { height: 39px; }
   .kb { gap: 5px; }
+}
+
+/* Foldable iPhone, opened (and other big screens). Keys stretch to fill their area. */
+@media (min-width: 700px) {
+  #app { max-width: none; }
+  .kb { gap: 8px; }
+  .kb-row { flex: 1 1 0; gap: 8px; }
+  .k { height: auto; min-height: 44px; font-size: 17px; border-radius: 10px; }
+  .k.pos, .k.label, .k.sd, .k.ctl, .k.str { font-size: 16px; }
+  .k.act, .k.num { font-size: 21px; }
+  .k.rank { font-size: 20px; }
+  .k.suit { font-size: 30px; }
+  #note { font-size: 18px; }
+  .hint { font-size: 13px; }
+}
+
+/* Opened wide (book orientation): note on the left half, keyboard on the right half,
+   with a gap down the middle so nothing sits on the fold. */
+@media (min-width: 700px) and (min-aspect-ratio: 1/1) {
+  #app {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    column-gap: 28px;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  .bar { grid-column: 1; grid-row: 1; padding-left: max(12px, env(safe-area-inset-left)); }
+  #note { grid-column: 1; grid-row: 2; margin: 0 0 0 max(12px, env(safe-area-inset-left)); }
+  .hint { grid-column: 1; grid-row: 3; padding-left: max(16px, env(safe-area-inset-left)); padding-bottom: 8px; }
+  .kb {
+    grid-column: 2;
+    grid-row: 1 / 4;
+    padding: 10px max(10px, env(safe-area-inset-right)) 10px 0;
+  }
+}
+
+/* Where the browser reports the fold (Viewport Segments API), split exactly on it. */
+@media (min-width: 700px) and (horizontal-viewport-segments: 2) {
+  #app {
+    grid-template-columns: env(viewport-segment-width 0 0, 1fr) env(viewport-segment-width 1 0, 1fr);
+    column-gap: calc(env(viewport-segment-left 1 0, 0px) - env(viewport-segment-right 0 0, 0px));
+  }
+  #note { margin-right: 14px; }
+  .kb { padding-left: 14px; }
+}
+
+/* Opened tall (rotated): note on the top half, keyboard on the bottom half. */
+@media (min-width: 700px) and (max-aspect-ratio: 1/1) {
+  #app { max-width: 960px; }
+  #note { margin: 0 16px; }
+  .kb { flex: 0 0 50%; padding: 10px 12px 12px; }
 }

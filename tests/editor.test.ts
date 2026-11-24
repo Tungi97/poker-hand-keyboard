@@ -65,4 +65,20 @@ describe('editor keys', () => {
   it('closing the action starts the next street with the pot', () => {
     expect(typeScript('hero btn r 20 sb r 90 hero c', setup)).toBe('eff 500 (100bb)\nhero btn r 20 sb r 90 hero c\n185 flop');
   });
+
+  it('str names UTG with 2x the big blind, then re-straddles double it', () => {
+    expect(typeScript('str', setup)).toBe('eff 500 (100bb)\nutg str 10');
+    const st = typeKeys('str', { ...setup, sb: 2 });
+    expect(st.text).toBe('eff 500 (100bb)\nutg str 10');
+    expect(typeScript('str str', setup)).toBe('eff 500 (100bb)\nutg str 10 utg1 str 20');
+  });
+
+  it('a typed straddle amount replaces the fill-in, and action moves to the next seat', () => {
+    const st = typeKeys('str 15', setup);
+    expect(st.text).toBe('eff 500 (100bb)\nutg str 15');
+    const after = typeKeys('str 15 c', setup);
+    expect(exportText(after)).toBe('eff 500 (100bb)\nutg str 15 utg1 c');
+    expect(after.text.endsWith('utg1 c mp')).toBe(true);
+  });
 });
+

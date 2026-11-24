@@ -15,7 +15,10 @@ export const ACTIONS = ['r', 'b', 'c', 'x', 'f', 'allin'] as const;
 export const RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as const;
 export const SUITS = ['s', 'h', 'd', 'c'] as const;
 
-const RESERVED = new Set<string>([...POSITIONS, ...ACTIONS, 'hero', 'eff', 'flop', 'turn', 'river', 'shows', 'mucks']);
+/** Seats that may straddle, in order: UTG first, then each re-straddle one seat to the left. */
+export const STRADDLE_SEATS: readonly Seat[] = ['utg', 'utg1', 'mp', 'lj', 'hj', 'co'];
+
+const RESERVED = new Set<string>([...POSITIONS, ...ACTIONS, 'hero', 'eff', 'flop', 'turn', 'river', 'shows', 'mucks', 'str']);
 const CARD_RE = /^[2-9TJQKA][shdc]$/;
 const CARDS_RE = /^(?:[2-9TJQKA][shdc])+$/; // e.g. AhKs in a showdown line
 const splitCards = (t: string) => t.match(/[2-9TJQKA][shdc]/g) ?? [];
@@ -66,6 +69,12 @@ export interface HandState {
   pendingActor: Seat | null;
   /** Trailing hero/label waiting for its position (e.g. `fish` before `sb`). */
   pendingBind: string | null;
+  /** Seat that may straddle next (UTG, then re-straddles), or null once preflop action has started. */
+  straddleSeat: Seat | null;
+  /** Default total for the next straddle: double the current biggest blind/straddle. */
+  straddleAmount: number;
+  /** Seats that straddled, in order. */
+  straddles: Seat[];
   board: string[];
   boardNeeded: number;
   usedCards: Set<string>;
@@ -142,6 +151,8 @@ export function parseHand(text: string, setup: Setup): HandState {
   let showing: Seat | null = null; // seat whose `shows` line is collecting cards
   let lastAggressor: Seat | null = null;
   let aggressedThisStreet = false;
+  const straddles: Seat[] = [];
+  let preflopActed = false; // a voluntary preflop action closes the straddle window
 
   const put = (p: Player, amount: number) => {
     const a = Math.max(0, Math.min(amount, p.stack));
@@ -158,6 +169,9 @@ export function parseHand(text: string, setup: Setup): HandState {
   const needsToAct = (p: Player) => p.inHand && !p.allIn && (!p.acted || p.streetBet < maxBet);
   const inHandCount = () => POSITIONS.filter((s) => players[s].inHand).length;
   const canBetCount = () => POSITIONS.filter((s) => players[s].inHand && !players[s].allIn).length;
+
+  const nextStraddle = (): Seat | null =>
+    street === 'preflop' && !preflopActed ? (STRADDLE_SEATS[straddles.length] ?? null) : null;
 
   const nextToAct = (): Seat | null => {
     if (inHandCount() <= 1) return null;
@@ -303,6 +317,34 @@ export function parseHand(text: string, setup: Setup): HandState {
       continue;
     }
 
+    if (w === 'str') {
+      const amountTok = tokens[i + 1] && NUM_RE.test(tokens[i + 1].text) ? tokens[i + 1] : null;
+      if (amountTok) i++;
+      const expected = nextStraddle();
+      const seat = pendingActor ?? expected;
+      pendingActor = null;
+      if (!expected) {
+        err(t, street === 'preflop' ? 'straddles come before any preflop action' : 'straddles are preflop only');
+        continue;
+      }
+      if (seat !== expected) {
+        err(t, `${expected} straddles next, not ${seat}`);
+        continue;
+      }
+      const p = players[seat];
+      const total = amountTok ? Number(amountTok.text) : maxBet * 2;
+      if (total <= maxBet) {
+        err(t, `${total} is not more than ${maxBet}`);
+        continue;
+      }
+      // Like a blind: chips go in, but the straddler keeps the option when action comes back.
+      put(p, total - p.streetBet);
+      maxBet = Math.max(maxBet, p.streetBet);
+      straddles.push(seat);
+      pointer = (order.indexOf(seat) + 1) % order.length;
+      continue;
+    }
+
     if ((POSITIONS as readonly string[]).includes(w)) {
       const seat = w as Seat;
       if (pendingBind) {
@@ -340,6 +382,7 @@ export function parseHand(text: string, setup: Setup): HandState {
 
       const p = resolveActor(t);
       if (!p) continue;
+      if (street === 'preflop') preflopActed = true;
       const prevMax = maxBet;
       switch (w) {
         case 'f':
@@ -408,6 +451,9 @@ export function parseHand(text: string, setup: Setup): HandState {
     toAct,
     pendingActor,
     pendingBind,
+    straddleSeat: nextStraddle(),
+    straddleAmount: maxBet * 2,
+    straddles,
     board,
     boardNeeded: BOARD_SIZE[street] - board.length,
     usedCards,
