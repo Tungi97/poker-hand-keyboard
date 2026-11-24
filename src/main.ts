@@ -87,6 +87,7 @@ function layout(): KeyDef[][] {
     row(
       ...['r', 'b', 'c', 'x', 'f'].map((a) => ({ k: `w:${a}`, label: a, cls: 'act' })),
       { k: 'allin', label: 'allin', cls: 'act w2' },
+      { k: 'w:str', label: 'str', cls: 'act str' },
       { k: 'back', label: '⌫', cls: 'ctl' },
     ),
     RANKS.slice(0, 7).map((r) => ({ k: `r:${r}`, label: r, cls: 'rank' })),
@@ -173,6 +174,7 @@ function render() {
   keyEls.get('next')!.disabled =
     state.street === 'river' || state.phase !== 'betting' || (state.street !== 'preflop' && state.boardNeeded > 0);
   for (const k of ['w:shows', 'w:mucks']) keyEls.get(k)!.disabled = state.phase === 'betting';
+  keyEls.get('w:str')!.disabled = !state.straddleSeat || state.phase !== 'betting';
   $('hist-count').textContent = history.length ? String(history.length) : '';
 }
 

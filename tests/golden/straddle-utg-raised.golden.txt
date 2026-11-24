@@ -1,0 +1,11 @@
+setup: 5/5 eff 500
+== note ==
+eff 500 (100bb)
+utg str 10 utg1 c hero btn r 40 sb f bb f utg c utg1 f
+100 flop
+== state ==
+street: flop  board: -
+pot: 100  live: 100  if-closed: 100
+in hand: utg:460, hero=btn:460
+to act: utg  hand over: false
+errors: none

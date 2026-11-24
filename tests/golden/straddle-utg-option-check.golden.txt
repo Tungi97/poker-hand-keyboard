@@ -1,0 +1,12 @@
+setup: 5/5 eff 500
+== note ==
+eff 500 (100bb)
+utg str 10 utg1 f mp f lj f hj f co f btn c sb f bb c utg x
+35 flop 9c 8c 2d. bb x utg x btn x
+35 turn
+== state ==
+street: turn  board: -
+pot: 35  live: 35  if-closed: 35
+in hand: bb:490, utg:490, btn:490
+to act: bb  hand over: false
+errors: none

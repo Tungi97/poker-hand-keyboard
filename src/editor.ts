@@ -3,7 +3,7 @@ import { POSITIONS, isLabel, parseHand, allinTotal, nextStreet, type Setup, type
 
 export type Key =
   | { t: 'digit'; d: string }
-  | { t: 'word'; w: string } // position, hero, label, action other than allin, shows/mucks
+  | { t: 'word'; w: string } // position, hero, label, action other than allin, str, shows/mucks
   | { t: 'allin' }
   | { t: 'rank'; r: string }
   | { t: 'suit'; s: string }
@@ -191,6 +191,15 @@ function nameIfNeeded(st: EditorState, setup: Setup): EditorState {
 function wordKey(st: EditorState, w: string, setup: Setup): EditorState {
   const done = (text: string, extra: Partial<EditorState> = {}): EditorState => ({ text, pendingRank: null, ...extra });
 
+  if (w === 'str') {
+    // Name the straddler (UTG, or the next re-straddler) and fill in double the last blind/straddle.
+    const s0 = parseHand(st.text, setup);
+    const text0 =
+      !s0.pendingActor && !s0.pendingBind && s0.straddleSeat ? appendWord(st.text, nameOf(s0, s0.straddleSeat)) : st.text;
+    const s = parseHand(text0, setup);
+    return done(appendWord(text0, `str ${s.straddleAmount}`), { tailFresh: true, needsAdvance: true });
+  }
+
   if (BETTING.has(w)) {
     const named = nameIfNeeded(st, setup);
     const text = appendWord(named.text, w);
@@ -244,7 +253,7 @@ function suitKey(st: EditorState, suit: string, setup: Setup): EditorState {
 }
 
 /** Feed a whitespace-separated shorthand script through the editor, as if typed on the keyboard.
- *  `|` = next street, `allin` = allin key, `eff` = tap the eff line, `<` = backspace,
+ *  `|` = next street, `allin` = allin key, `str` = straddle key (fills 2x), `eff` = tap the eff line, `<` = backspace,
  *  cards like `Ad` or `AhKs` = rank + suit keys. */
 export function typeScript(script: string, setup: Setup, start = newHandText(setup)): string {
   return exportText(typeKeys(script, setup, start));

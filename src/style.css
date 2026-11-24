@@ -171,6 +171,7 @@ button { font: inherit; color: inherit; }
 .k.gold:active { background: #d3bb8e; }
 .k.gold:disabled { background: var(--key-alt); color: var(--muted); opacity: 0.5; }
 .k.w2 { flex-grow: 1.6; }
+.k.str { font-size: 15px; color: var(--gold); }
 
 /* Sheets */
 .sheet {
@@ -251,4 +252,20 @@ input:focus { outline: none; border-color: var(--gold); }
 @media (max-height: 700px) {
   .k { height: 39px; }
   .kb { gap: 5px; }
+}
+
+/* Foldable iPhone opened, held in portrait: the phone layout, just roomier.
+   Keys keep a fixed, phone-like height; the note takes the rest of the screen. */
+@media (min-width: 700px) {
+  #app { max-width: 760px; }
+  .bar { padding: 10px 16px 8px; }
+  #note { margin: 0 16px; font-size: 18px; }
+  .hint { padding: 6px 20px 4px; font-size: 13px; }
+  .kb { gap: 7px; padding: 8px 12px 12px; }
+  .kb-row { gap: 7px; }
+  .k { height: 54px; font-size: 17px; border-radius: 10px; }
+  .k.pos, .k.label, .k.sd, .k.ctl, .k.str { font-size: 15px; }
+  .k.act, .k.num { font-size: 20px; }
+  .k.rank { font-size: 19px; }
+  .k.suit { font-size: 28px; }
 }

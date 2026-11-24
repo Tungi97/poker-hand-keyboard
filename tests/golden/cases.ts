@@ -55,4 +55,10 @@ export const cases: GoldenCase[] = [
     keys: 'hero lj r 20 co c btn r 100 lj f c Kd9d4h x x Ah x b 50 c 2c x x shows AsAd mucks',
   },
   { name: 'v2-voluntary-show-after-fold', setup: s55, keys: 'hero co r 15 btn f sb f bb f hero shows QhQd' },
+
+  // straddles: `str` names UTG (then the next re-straddler) and fills 2x the last blind/straddle
+  { name: 'straddle-utg-option-check', setup: s55, keys: 'str f f f f f btn c sb f bb c x | 9c 8c 2d x x x' },
+  { name: 'straddle-utg-raised', setup: s55, keys: 'str c hero btn r 40 sb f bb f utg c utg1 f' },
+  { name: 'straddle-double-custom-amount', setup: s25, keys: 'str str 25 hero co r 100 btn f sb f bb f utg f utg1 c' },
+  { name: 'straddle-error-after-action', setup: s55, keys: 'utg c utg1 str 20' },
 ];
